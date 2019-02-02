@@ -1,12 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"strings"
 
+	"github.com/mattn/go-shellwords"
 	"github.com/nsf/termbox-go"
 )
 
@@ -158,17 +157,21 @@ mainloop:
 					panic(err)
 				}
 
-				commandLine := strings.Split(fmt.Sprint(string(inputArea.text), " ./tmp.txt"), " ")
-				baseCommand, opts := commandLine[0], commandLine[1:]
+				args, err := shellwords.Parse(string(inputArea.text))
+				if err != nil {
+					panic(err)
+				}
 
+				baseCommand, opts := args[0], append(args[1:], "./tmp.txt")
 				cmd := exec.Command(baseCommand, opts...)
 
+				// cmd := exek", []string{"{print $4}", "./tmp.txt
 				out, err := cmd.Output()
 				if err != nil {
-					//if exitErr, ok := err.(*exec.ExitError); ok {
-					//	panic(string(exitErr.Stderr))
-					//}
-					panic(strings.Join(commandLine, " "))
+					if exitErr, ok := err.(*exec.ExitError); ok {
+						panic(string(exitErr.Stderr))
+					}
+					panic(err)
 				}
 
 				textArea.text = out

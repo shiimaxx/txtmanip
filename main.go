@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -153,19 +154,15 @@ mainloop:
 				inputArea.Input(rune(' '))
 				inputArea.ForwardCursor()
 			case termbox.KeyEnter:
-				if err := ioutil.WriteFile("./tmp.txt", textArea.text, os.ModePerm); err != nil {
-					panic(err)
-				}
-
 				args, err := shellwords.Parse(string(inputArea.text))
 				if err != nil {
 					panic(err)
 				}
 
-				baseCommand, opts := args[0], append(args[1:], "./tmp.txt")
+				baseCommand, opts := args[0], args[1:]
 				cmd := exec.Command(baseCommand, opts...)
+				cmd.Stdin = bytes.NewBuffer(textArea.text)
 
-				// cmd := exek", []string{"{print $4}", "./tmp.txt
 				out, err := cmd.Output()
 				if err != nil {
 					if exitErr, ok := err.(*exec.ExitError); ok {
@@ -177,8 +174,6 @@ mainloop:
 				textArea.text = out
 				textArea.Draw()
 				inputArea.InitCursor()
-
-				os.Remove("./tmp.txt")
 				inputArea.text = []byte("")
 			default:
 				if ev.Ch != 0 {

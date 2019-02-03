@@ -70,6 +70,11 @@ func (t *TextArea) Draw() {
 	}
 }
 
+func (t *TextArea) Redo() {
+	t.text = []byte(t.history[len(t.history)-1])
+	t.history = t.history[:len(t.history)-1]
+}
+
 // InputArea represent input area
 type InputArea struct {
 	text      []byte
@@ -152,6 +157,10 @@ func (i *InputArea) DrawError() {
 	i.error = []byte("")
 }
 
+func (i *InputArea) RedoHistory() {
+	i.history = i.history[:len(i.history)-1]
+}
+
 func main() {
 	if err := termbox.Init(); err != nil {
 		panic(err)
@@ -209,9 +218,8 @@ mainloop:
 				if len(view.textArea.history) < 1 {
 					return
 				}
-				view.textArea.text = []byte(view.textArea.history[len(view.textArea.history)-1])
-				view.textArea.history = view.textArea.history[:len(view.textArea.history)-1]
-				view.inputArea.history = view.inputArea.history[:len(view.inputArea.history)-1]
+				view.textArea.Redo()
+				view.inputArea.RedoHistory()
 				view.Flush()
 			case termbox.KeyEnter:
 				if len(view.inputArea.text) < 1 {

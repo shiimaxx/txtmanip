@@ -43,7 +43,6 @@ func (v *MainView) Flush() error {
 		termbox.SetCell(x, BorderLinePos, rune('-'), ColFg, ColBg)
 	}
 
-	termbox.SetCursor(0, 0)
 	v.inputArea.Clear()
 	v.inputArea.DrawError()
 	v.textArea.Draw()
@@ -53,7 +52,8 @@ func (v *MainView) Flush() error {
 
 // TextArea represent text area
 type TextArea struct {
-	text []byte
+	text    []byte
+	history []string
 }
 
 func (t *TextArea) Draw() {
@@ -142,16 +142,21 @@ func (i *InputArea) Clear() {
 }
 
 func (i *InputArea) DrawError() {
+	if len(i.error) < 1 {
+		return
+	}
+
 	for x, t := range i.error {
 		termbox.SetCell(x, InputErrorPos, rune(t), ColErr, ColBg)
 	}
+	i.error = []byte("")
 }
 
 func main() {
 	if err := termbox.Init(); err != nil {
 		panic(err)
 	}
-	defer termbox.Close()
+	//defer termbox.Close()
 	termbox.SetInputMode(termbox.InputEsc)
 
 	f := os.Args[1]
@@ -186,15 +191,28 @@ mainloop:
 				break mainloop
 			case termbox.KeyCtrlA:
 				view.inputArea.InitCursor()
+				termbox.Flush()
 			case termbox.KeyCtrlE:
 				view.inputArea.EndCursor()
+				termbox.Flush()
 			case termbox.KeyArrowLeft, termbox.KeyCtrlH:
 				view.inputArea.BackwardCursor()
+				termbox.Flush()
 			case termbox.KeyArrowRight, termbox.KeyCtrlF:
 				view.inputArea.ForwardCursor()
+				termbox.Flush()
 			case termbox.KeySpace:
 				view.inputArea.Input(rune(' '))
 				view.inputArea.ForwardCursor()
+				termbox.Flush()
+			case termbox.KeyCtrlZ:
+				if len(view.textArea.history) < 1 {
+					return
+				}
+				view.textArea.text = []byte(view.textArea.history[len(view.textArea.history)-1])
+				view.textArea.history = view.textArea.history[:len(view.textArea.history)-1]
+				view.inputArea.history = view.inputArea.history[:len(view.inputArea.history)-1]
+				view.Flush()
 			case termbox.KeyEnter:
 				if len(view.inputArea.text) < 1 {
 					break mainloop
@@ -216,23 +234,22 @@ mainloop:
 					} else {
 						view.inputArea.error = []byte(err.Error())
 					}
-					view.inputArea.DrawError()
-					view.Flush()
-					continue
+				} else {
+					view.textArea.history = append(view.textArea.history, string(view.textArea.text))
+					view.textArea.text = out
+					view.inputArea.SaveHistory()
 				}
-
-				view.textArea.text = out
-				view.inputArea.SaveHistory()
 				view.Flush()
 			default:
 				if ev.Ch != 0 {
 					view.inputArea.Input(ev.Ch)
 					view.inputArea.ForwardCursor()
+					termbox.Flush()
 				}
 			}
 		}
-		termbox.Flush()
 	}
+	termbox.Flush()
 
 	fmt.Println(fmt.Sprintf("cat %s | ", f), strings.Join(view.inputArea.history, " | "))
 }

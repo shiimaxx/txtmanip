@@ -204,7 +204,7 @@ mainloop:
 			case termbox.KeyCtrlE:
 				view.inputArea.EndCursor()
 				termbox.Flush()
-			case termbox.KeyArrowLeft, termbox.KeyCtrlH:
+			case termbox.KeyArrowLeft, termbox.KeyCtrlB:
 				view.inputArea.BackwardCursor()
 				termbox.Flush()
 			case termbox.KeyArrowRight, termbox.KeyCtrlF:
@@ -216,7 +216,7 @@ mainloop:
 				termbox.Flush()
 			case termbox.KeyCtrlZ:
 				if len(view.textArea.history) < 1 {
-					return
+					continue
 				}
 				view.textArea.Redo()
 				view.inputArea.RedoHistory()

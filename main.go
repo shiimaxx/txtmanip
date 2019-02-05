@@ -90,16 +90,18 @@ type InputArea struct {
 //}
 
 func (i *InputArea) Input(ch rune) {
-	//if len(i.text) > i.cursorPos && i.text[i.cursorPos] != 0 {
-	//	before := i.text[i.cursorPos:]
-	//	after := i.text[:i.cursorPos]
-	//	i.text = append(before, byte(ch))
-	//	i.text = append(i.text, after...)
-	//	for i, t := range i.text {
-	//		termbox.SetCell(i, 0, rune(t), termbox.ColorWhite, termbox.ColorDefault)
-	//	}
-	//	return
-	//}
+	if len(i.text) > i.cursorPos && i.text[i.cursorPos] != 0 {
+		i.text = append(i.text[:i.cursorPos], append([]byte{byte(ch)}, i.text[i.cursorPos:]...)...)
+
+		for x := 0; x < len(i.text); x++ {
+			termbox.SetCell(x, InputAreaPos, rune(' '), ColFg, ColBg)
+		}
+
+		for i, t := range i.text {
+			termbox.SetCell(i, InputAreaPos, rune(t), ColFg, ColBg)
+		}
+		return
+	}
 
 	termbox.SetCell(i.cursorPos, InputAreaPos, ch, termbox.ColorWhite, termbox.ColorDefault)
 	i.text = append(i.text, byte(ch))

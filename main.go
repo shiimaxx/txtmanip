@@ -161,6 +161,22 @@ func (i *InputArea) RedoHistory() {
 	i.history = i.history[:len(i.history)-1]
 }
 
+func (i *InputArea) Delete() {
+	if len(i.text) < 1 {
+		return
+	}
+
+	for x := 0; x < len(i.text); x++ {
+		termbox.SetCell(x, InputAreaPos, rune(' '), ColFg, ColBg)
+	}
+
+	i.text = append(i.text[:i.cursorPos], i.text[i.cursorPos+1:]...)
+
+	for x, t := range i.text {
+		termbox.SetCell(x, InputAreaPos, rune(t), ColFg, ColBg)
+	}
+}
+
 func main() {
 	if err := termbox.Init(); err != nil {
 		panic(err)
@@ -221,6 +237,13 @@ mainloop:
 				view.textArea.Redo()
 				view.inputArea.RedoHistory()
 				view.Flush()
+			case termbox.KeyBackspace, termbox.KeyBackspace2:
+				view.inputArea.BackwardCursor()
+				view.inputArea.Delete()
+				termbox.Flush()
+			case termbox.KeyDelete, termbox.KeyCtrlD:
+				view.inputArea.Delete()
+				termbox.Flush()
 			case termbox.KeyEnter:
 				if len(view.inputArea.text) < 1 {
 					break mainloop

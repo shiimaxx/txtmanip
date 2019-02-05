@@ -83,12 +83,6 @@ type InputArea struct {
 	history   []string
 }
 
-//func (i *InputArea) DrawText() {
-//	if len(i.text) < 1 {
-//		return
-//	}
-//}
-
 func (i *InputArea) Input(ch rune) {
 	if len(i.text) > i.cursorPos && i.text[i.cursorPos] != 0 {
 		i.text = append(i.text[:i.cursorPos], append([]byte{byte(ch)}, i.text[i.cursorPos:]...)...)
@@ -183,9 +177,11 @@ func main() {
 	if err := termbox.Init(); err != nil {
 		panic(err)
 	}
+	//TODO: termbox関連の処理を別関数に切り出す
 	//defer termbox.Close()
 	termbox.SetInputMode(termbox.InputEsc)
 
+	//TODO: 標準入力から読み込めるようにする
 	f := os.Args[1]
 	if _, err := os.Stat(f); os.IsNotExist(err) {
 		panic(err)

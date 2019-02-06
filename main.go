@@ -191,6 +191,11 @@ func main() {
 		panic(err)
 	}
 
+	enableCommands, err := GetEnableCommands("./txtmanip.toml")
+	if err != nil {
+		panic(err)
+	}
+
 	w, h := termbox.Size()
 	view := &MainView{
 		textArea: TextArea{
@@ -253,6 +258,19 @@ mainloop:
 				}
 
 				baseCommand, opts := args[0], args[1:]
+
+				var enabled bool
+				for _, c := range enableCommands {
+					if baseCommand == c {
+						enabled = true
+					}
+				}
+				if !enabled {
+					view.inputArea.error = []byte(fmt.Sprint(baseCommand, "cannot be executed"))
+					view.Flush()
+					continue
+				}
+
 				cmd := exec.Command(baseCommand, opts...)
 				cmd.Stdin = bufio.NewReader(bytes.NewBuffer(view.textArea.text))
 

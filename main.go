@@ -39,27 +39,43 @@ func (v *MainView) Flush() error {
 		return err
 	}
 
-	for x := 0; x < v.width; x++ {
-		termbox.SetCell(x, BorderLinePos, rune('-'), ColFg, ColBg)
-	}
-
-	v.inputArea.Clear()
-	v.inputArea.DrawError()
-	v.textArea.Draw()
+	termbox.SetCursor(v.inputArea.cursorPos, InputAreaPos)
+	v.DrawBorderLine()
+	v.DrawInputArea()
+	v.DrawInputError()
+	v.DrawTextArea()
 
 	return termbox.Flush()
 }
 
-// TextArea represent text area
-type TextArea struct {
-	text    []byte
-	history []string
+func (v *MainView) DrawBorderLine() {
+	for x := 0; x < v.width; x++ {
+		termbox.SetCell(x, BorderLinePos, rune('-'), ColFg, ColBg)
+	}
 }
 
-func (t *TextArea) Draw() {
-	x := 0
+func (v *MainView) DrawInputArea() {
+	if len(v.inputArea.text) < 1 {
+		return
+	}
+
+	for x := 0; x < v.width; x++ {
+		if x < len(v.inputArea.text) {
+			termbox.SetCell(x, InputAreaPos, rune(v.inputArea.text[x]), ColFg, ColBg)
+		} else {
+			termbox.SetCell(x, InputAreaPos, rune(' '), ColFg, ColBg)
+		}
+	}
+}
+
+func (v *MainView) DrawInputError() {
+	v.inputArea.drawError()
+}
+
+func (v *MainView) DrawTextArea() {
 	y := TextAreaPos
-	for _, t := range t.text {
+	x := 0
+	for _, t := range v.textArea.text {
 		if t == byte('\n') {
 			y++
 			x = 0
@@ -70,9 +86,56 @@ func (t *TextArea) Draw() {
 	}
 }
 
-func (t *TextArea) Redo() {
-	t.text = []byte(t.history[len(t.history)-1])
-	t.history = t.history[:len(t.history)-1]
+func (v *MainView) InputText(ch rune) {
+	v.inputArea.input(ch)
+}
+
+func (v *MainView) DeleteInputText() {
+	v.inputArea.delete()
+}
+
+func (v *MainView) InputError(m string) {
+	v.inputArea.error = []byte(m)
+}
+
+func (v *MainView) InitCursor() {
+	v.inputArea.initCursor()
+}
+
+func (v *MainView) EndCursor() {
+	v.inputArea.endCursor()
+}
+
+func (v *MainView) ForwardCursor() {
+	v.inputArea.forwardCursor()
+}
+
+func (v *MainView) BackwardCursor() {
+	v.inputArea.backwardCursor()
+}
+
+func (v *MainView) RedoInputHistory() {
+	v.inputArea.redoHistory()
+}
+
+func (v *MainView) SaveInputHistory() {
+	v.inputArea.saveHistory()
+}
+
+func (v *MainView) ClearInputText() {
+	v.inputArea.clear()
+}
+
+func (v *MainView) SetText(out *[]byte) {
+	v.textArea.setText(out)
+}
+
+func (v *MainView) RedoText() {
+	v.textArea.redo()
+}
+
+func (v *MainView) SaveTextHistory() {
+	v.textArea.saveHistory()
 }
 
 // InputArea represent input area
@@ -83,66 +146,53 @@ type InputArea struct {
 	history   []string
 }
 
-func (i *InputArea) Input(ch rune) {
+func (i *InputArea) input(ch rune) {
 	if len(i.text) > i.cursorPos && i.text[i.cursorPos] != 0 {
 		i.text = append(i.text[:i.cursorPos], append([]byte{byte(ch)}, i.text[i.cursorPos:]...)...)
-
-		for x := 0; x < len(i.text); x++ {
-			termbox.SetCell(x, InputAreaPos, rune(' '), ColFg, ColBg)
-		}
-
-		for i, t := range i.text {
-			termbox.SetCell(i, InputAreaPos, rune(t), ColFg, ColBg)
-		}
 		return
 	}
 
-	termbox.SetCell(i.cursorPos, InputAreaPos, ch, termbox.ColorWhite, termbox.ColorDefault)
 	i.text = append(i.text, byte(ch))
 }
 
-func (i *InputArea) InitCursor() {
+func (i *InputArea) initCursor() {
 	if i.cursorPos < 1 {
 		return
 	}
 	i.cursorPos = 0
-	termbox.SetCursor(i.cursorPos, 0)
 }
 
-func (i *InputArea) EndCursor() {
+func (i *InputArea) endCursor() {
 	if i.cursorPos >= len(i.text) {
 		return
 	}
 	i.cursorPos = len(i.text)
-	termbox.SetCursor(i.cursorPos, 0)
 }
 
-func (i *InputArea) ForwardCursor() {
+func (i *InputArea) forwardCursor() {
 	if i.cursorPos >= len(i.text) {
 		return
 	}
 	i.cursorPos++
-	termbox.SetCursor(i.cursorPos, 0)
 }
 
-func (i *InputArea) BackwardCursor() {
+func (i *InputArea) backwardCursor() {
 	if i.cursorPos < 1 {
 		return
 	}
 	i.cursorPos--
-	termbox.SetCursor(i.cursorPos, 0)
 }
 
-func (i *InputArea) SaveHistory() {
+func (i *InputArea) saveHistory() {
 	i.history = append(i.history, string(i.text))
 }
 
-func (i *InputArea) Clear() {
-	i.InitCursor()
+func (i *InputArea) clear() {
+	i.initCursor()
 	i.text = []byte("")
 }
 
-func (i *InputArea) DrawError() {
+func (i *InputArea) drawError() {
 	if len(i.error) < 1 {
 		return
 	}
@@ -153,24 +203,35 @@ func (i *InputArea) DrawError() {
 	i.error = []byte("")
 }
 
-func (i *InputArea) RedoHistory() {
+func (i *InputArea) redoHistory() {
 	i.history = i.history[:len(i.history)-1]
 }
 
-func (i *InputArea) Delete() {
+func (i *InputArea) delete() {
 	if len(i.text) < 1 {
 		return
 	}
 
-	for x := 0; x < len(i.text); x++ {
-		termbox.SetCell(x, InputAreaPos, rune(' '), ColFg, ColBg)
-	}
-
 	i.text = append(i.text[:i.cursorPos], i.text[i.cursorPos+1:]...)
+}
 
-	for x, t := range i.text {
-		termbox.SetCell(x, InputAreaPos, rune(t), ColFg, ColBg)
-	}
+// TextArea represent text area
+type TextArea struct {
+	text    []byte
+	history []string
+}
+
+func (t *TextArea) setText(out *[]byte) {
+	t.text = *out
+}
+
+func (t *TextArea) redo() {
+	t.text = []byte(t.history[len(t.history)-1])
+	t.history = t.history[:len(t.history)-1]
+}
+
+func (t *TextArea) saveHistory() {
+	t.history = append(t.history, string(t.text))
 }
 
 func main() {
@@ -212,41 +273,35 @@ func main() {
 
 mainloop:
 	for {
+		view.Flush()
+
 		switch ev := termbox.PollEvent(); ev.Type {
 		case termbox.EventKey:
 			switch ev.Key {
 			case termbox.KeyEsc, termbox.KeyCtrlC:
 				break mainloop
 			case termbox.KeyCtrlA:
-				view.inputArea.InitCursor()
-				termbox.Flush()
+				view.InitCursor()
 			case termbox.KeyCtrlE:
-				view.inputArea.EndCursor()
-				termbox.Flush()
+				view.EndCursor()
 			case termbox.KeyArrowLeft, termbox.KeyCtrlB:
-				view.inputArea.BackwardCursor()
-				termbox.Flush()
+				view.BackwardCursor()
 			case termbox.KeyArrowRight, termbox.KeyCtrlF:
-				view.inputArea.ForwardCursor()
-				termbox.Flush()
+				view.ForwardCursor()
 			case termbox.KeySpace:
-				view.inputArea.Input(rune(' '))
-				view.inputArea.ForwardCursor()
-				termbox.Flush()
+				view.InputText(rune(' '))
+				view.ForwardCursor()
 			case termbox.KeyCtrlZ:
 				if len(view.textArea.history) < 1 {
 					continue
 				}
-				view.textArea.Redo()
-				view.inputArea.RedoHistory()
-				view.Flush()
+				view.RedoText()
+				view.RedoInputHistory()
 			case termbox.KeyBackspace, termbox.KeyBackspace2:
-				view.inputArea.BackwardCursor()
-				view.inputArea.Delete()
-				termbox.Flush()
+				view.BackwardCursor()
+				view.DeleteInputText()
 			case termbox.KeyDelete, termbox.KeyCtrlD:
-				view.inputArea.Delete()
-				termbox.Flush()
+				view.DeleteInputText()
 			case termbox.KeyEnter:
 				if len(view.inputArea.text) < 1 {
 					break mainloop
@@ -266,8 +321,8 @@ mainloop:
 					}
 				}
 				if !enabled {
-					view.inputArea.error = []byte(fmt.Sprint(baseCommand, "cannot be executed"))
-					view.Flush()
+					view.ClearInputText()
+					view.InputError(fmt.Sprint(baseCommand, " cannot be executed"))
 					continue
 				}
 
@@ -277,26 +332,24 @@ mainloop:
 				out, err := cmd.Output()
 				if err != nil {
 					if exitErr, ok := err.(*exec.ExitError); ok {
-						view.inputArea.error = exitErr.Stderr
+						view.InputError(string(exitErr.Stderr))
 					} else {
-						view.inputArea.error = []byte(err.Error())
+						view.InputError(err.Error())
 					}
 				} else {
-					view.textArea.history = append(view.textArea.history, string(view.textArea.text))
-					view.textArea.text = out
-					view.inputArea.SaveHistory()
+					view.SaveTextHistory()
+					view.SetText(&out)
+					view.SaveInputHistory()
+					view.ClearInputText()
 				}
-				view.Flush()
 			default:
 				if ev.Ch != 0 {
-					view.inputArea.Input(ev.Ch)
-					view.inputArea.ForwardCursor()
-					termbox.Flush()
+					view.InputText(ev.Ch)
+					view.ForwardCursor()
 				}
 			}
 		}
 	}
-	termbox.Flush()
 
 	fmt.Println(fmt.Sprintf("cat %s | ", f), strings.Join(view.inputArea.history, " | "))
 }

@@ -235,13 +235,6 @@ func (t *TextArea) saveHistory() {
 }
 
 func main() {
-	if err := termbox.Init(); err != nil {
-		panic(err)
-	}
-	//TODO: termbox関連の処理を別関数に切り出す
-	//defer termbox.Close()
-	termbox.SetInputMode(termbox.InputEsc)
-
 	//TODO: 標準入力から読み込めるようにする
 	f := os.Args[1]
 	if _, err := os.Stat(f); os.IsNotExist(err) {
@@ -257,99 +250,109 @@ func main() {
 		panic(err)
 	}
 
-	w, h := termbox.Size()
-	view := &MainView{
-		textArea: TextArea{
-			text: text,
-		},
-		inputArea: InputArea{},
-		width:     w,
-		height:    h,
-	}
+	cmdHistoryCh := make(chan []string)
 
-	if err := view.Flush(); err != nil {
-		panic(err)
-	}
+	go func() {
+		if err := termbox.Init(); err != nil {
+			panic(err)
+		}
 
-mainloop:
-	for {
-		view.Flush()
+		w, h := termbox.Size()
+		view := &MainView{
+			textArea: TextArea{
+				text: text,
+			},
+			inputArea: InputArea{},
+			width:     w,
+			height:    h,
+		}
+		defer func() {
+			termbox.Close()
+			cmdHistoryCh <- view.inputArea.history
+		}()
 
-		switch ev := termbox.PollEvent(); ev.Type {
-		case termbox.EventKey:
-			switch ev.Key {
-			case termbox.KeyEsc, termbox.KeyCtrlC:
-				break mainloop
-			case termbox.KeyCtrlA:
-				view.InitCursor()
-			case termbox.KeyCtrlE:
-				view.EndCursor()
-			case termbox.KeyArrowLeft, termbox.KeyCtrlB:
-				view.BackwardCursor()
-			case termbox.KeyArrowRight, termbox.KeyCtrlF:
-				view.ForwardCursor()
-			case termbox.KeySpace:
-				view.InputText(rune(' '))
-				view.ForwardCursor()
-			case termbox.KeyCtrlZ:
-				if len(view.textArea.history) < 1 {
-					continue
-				}
-				view.RedoText()
-				view.RedoInputHistory()
-			case termbox.KeyBackspace, termbox.KeyBackspace2:
-				view.BackwardCursor()
-				view.DeleteInputText()
-			case termbox.KeyDelete, termbox.KeyCtrlD:
-				view.DeleteInputText()
-			case termbox.KeyEnter:
-				if len(view.inputArea.text) < 1 {
+		termbox.SetInputMode(termbox.InputEsc)
+
+	mainloop:
+		for {
+			view.Flush()
+
+			switch ev := termbox.PollEvent(); ev.Type {
+			case termbox.EventKey:
+				switch ev.Key {
+				case termbox.KeyEsc, termbox.KeyCtrlC:
 					break mainloop
-				}
-
-				args, err := shellwords.Parse(string(view.inputArea.text))
-				if err != nil {
-					panic(err)
-				}
-
-				baseCommand, opts := args[0], args[1:]
-
-				var enabled bool
-				for _, c := range enableCommands {
-					if baseCommand == c {
-						enabled = true
-					}
-				}
-				if !enabled {
-					view.ClearInputText()
-					view.InputError(fmt.Sprint(baseCommand, " cannot be executed"))
-					continue
-				}
-
-				cmd := exec.Command(baseCommand, opts...)
-				cmd.Stdin = bufio.NewReader(bytes.NewBuffer(view.textArea.text))
-
-				out, err := cmd.Output()
-				if err != nil {
-					if exitErr, ok := err.(*exec.ExitError); ok {
-						view.InputError(string(exitErr.Stderr))
-					} else {
-						view.InputError(err.Error())
-					}
-				} else {
-					view.SaveTextHistory()
-					view.SetText(&out)
-					view.SaveInputHistory()
-					view.ClearInputText()
-				}
-			default:
-				if ev.Ch != 0 {
-					view.InputText(ev.Ch)
+				case termbox.KeyCtrlA:
+					view.InitCursor()
+				case termbox.KeyCtrlE:
+					view.EndCursor()
+				case termbox.KeyArrowLeft, termbox.KeyCtrlB:
+					view.BackwardCursor()
+				case termbox.KeyArrowRight, termbox.KeyCtrlF:
 					view.ForwardCursor()
+				case termbox.KeySpace:
+					view.InputText(rune(' '))
+					view.ForwardCursor()
+				case termbox.KeyCtrlZ:
+					if len(view.textArea.history) < 1 {
+						continue
+					}
+					view.RedoText()
+					view.RedoInputHistory()
+				case termbox.KeyBackspace, termbox.KeyBackspace2:
+					view.BackwardCursor()
+					view.DeleteInputText()
+				case termbox.KeyDelete, termbox.KeyCtrlD:
+					view.DeleteInputText()
+				case termbox.KeyEnter:
+					if len(view.inputArea.text) < 1 {
+						break mainloop
+					}
+
+					args, err := shellwords.Parse(string(view.inputArea.text))
+					if err != nil {
+						panic(err)
+					}
+
+					baseCommand, opts := args[0], args[1:]
+
+					var enabled bool
+					for _, c := range enableCommands {
+						if baseCommand == c {
+							enabled = true
+						}
+					}
+					if !enabled {
+						view.ClearInputText()
+						view.InputError(fmt.Sprint(baseCommand, " cannot be executed"))
+						continue
+					}
+
+					cmd := exec.Command(baseCommand, opts...)
+					cmd.Stdin = bufio.NewReader(bytes.NewBuffer(view.textArea.text))
+
+					out, err := cmd.Output()
+					if err != nil {
+						if exitErr, ok := err.(*exec.ExitError); ok {
+							view.InputError(string(exitErr.Stderr))
+						} else {
+							view.InputError(err.Error())
+						}
+					} else {
+						view.SaveTextHistory()
+						view.SetText(&out)
+						view.SaveInputHistory()
+						view.ClearInputText()
+					}
+				default:
+					if ev.Ch != 0 {
+						view.InputText(ev.Ch)
+						view.ForwardCursor()
+					}
 				}
 			}
 		}
-	}
+	}()
 
-	fmt.Println(fmt.Sprintf("cat %s | ", f), strings.Join(view.inputArea.history, " | "))
+	fmt.Println(fmt.Sprintf("cat %s | ", f), strings.Join(<-cmdHistoryCh, " | "))
 }

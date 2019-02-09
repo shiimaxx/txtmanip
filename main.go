@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -15,13 +16,21 @@ import (
 )
 
 const (
+	Name    = "txtmanip"
+	Version = "0.0.0"
+)
+
+const (
+	ExitCodeOK    = 0
+	ExitCodeError = 10 + iota
+)
+
+const (
 	InputAreaPos = iota
 	InputErrorPos
 	BorderLinePos
 	TextAreaPos
 )
-
-const Name = "txtmanip"
 
 const (
 	ColBg  = termbox.ColorDefault
@@ -238,14 +247,28 @@ func (t *TextArea) saveHistory() {
 }
 
 func main() {
-	var config string
+	os.Exit(_main())
+}
+
+func _main() int {
+	var (
+		config  string
+		version bool
+	)
 
 	flags := flag.NewFlagSet(Name, flag.ContinueOnError)
+	flags.Usage = usage
 	flags.StringVar(&config, "c", "txtmanip.toml", "")
+	flags.StringVar(&config, "config", "txtmanip.toml", "")
+	flags.BoolVar(&version, "version", false, "")
 	if err := flags.Parse(os.Args[1:]); err != nil {
-		panic(err)
+		return ExitCodeError
 	}
 
+	if version {
+		fmt.Printf("%s version %s\n", Name, Version)
+		return ExitCodeOK
+	}
 	var src *os.File
 	var f string
 
@@ -254,30 +277,36 @@ func main() {
 	} else {
 		f = flags.Arg(0)
 		if _, err := os.Stat(f); os.IsNotExist(err) {
-			panic(err)
+			fmt.Fprintf(os.Stderr, "%s is not exist: %s\n", f, err.Error())
+			return ExitCodeError
 		}
 		file, err := os.Open(f)
 		if err != nil {
-			panic(err)
+			fmt.Fprintf(os.Stderr, "Open file failed: %s\n", err.Error())
+			return ExitCodeError
 		}
 		src = file
 	}
 
 	text, err := ioutil.ReadAll(src)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Reading from src failed: %s\n", err.Error())
+		return ExitCodeError
 	}
 
 	enableCommands, err := GetEnableCommands(config)
 	if err != nil {
-		panic(err)
+		fmt.Fprintf(os.Stderr, "Read config failed: %s\n", err.Error())
+		return ExitCodeError
 	}
 
 	cmdHistoryCh := make(chan []string)
+	errCh := make(chan error)
 
 	go func() {
 		if err := termbox.Init(); err != nil {
-			panic(err)
+			errCh <- errors.New(fmt.Sprint("initialize failed: ", err.Error()))
+			return
 		}
 
 		w, h := termbox.Size()
@@ -334,7 +363,8 @@ func main() {
 
 					args, err := shellwords.Parse(string(view.inputArea.text))
 					if err != nil {
-						panic(err)
+						errCh <- errors.New(fmt.Sprint("parse command failed: ", err.Error()))
+						return
 					}
 
 					baseCommand, opts := args[0], args[1:]
@@ -378,8 +408,34 @@ func main() {
 		}
 	}()
 
-	if f == "" {
-		f = "<source file>"
+	select {
+	case err := <-errCh:
+		fmt.Fprintf(os.Stderr, err.Error())
+		return ExitCodeError
+	case cmdHistory := <-cmdHistoryCh:
+		if f == "" {
+			f = "<source file>"
+		}
+		fmt.Println(fmt.Sprintf("cat %s | ", f), strings.Join(cmdHistory, " | "))
+		return ExitCodeOK
 	}
-	fmt.Println(fmt.Sprintf("cat %s | ", f), strings.Join(<-cmdHistoryCh, " | "))
+}
+
+func usage() {
+	fmt.Fprintf(os.Stderr, `Usage: textmanip [options] [FILE]
+
+  txtmanip is a tool for text manipulation in interactive console with os commands.
+
+  Run the txtmanip, starts interactive mode and you can text manipulation. 
+  The initial output content is either of a file specified by arguments or standard input.
+
+  After quit, prints one-liner of generating the same output for your made final result in interactive mode.
+
+Options:
+  -config, -c    Set configuration file path (default "txtmanip.toml")
+
+Commands in interactive mode:
+  Ctrl+Z       Redo text.
+  Ctrl+C       Quit interactive mode.
+`)
 }

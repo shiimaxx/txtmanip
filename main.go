@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -19,6 +20,8 @@ const (
 	BorderLinePos
 	TextAreaPos
 )
+
+const Name = "txtmanip"
 
 const (
 	ColBg  = termbox.ColorDefault
@@ -235,17 +238,37 @@ func (t *TextArea) saveHistory() {
 }
 
 func main() {
-	//TODO: 標準入力から読み込めるようにする
-	f := os.Args[1]
-	if _, err := os.Stat(f); os.IsNotExist(err) {
+	var config string
+
+	flags := flag.NewFlagSet(Name, flag.ContinueOnError)
+	flags.StringVar(&config, "c", "txtmanip.toml", "")
+	if err := flags.Parse(os.Args[1:]); err != nil {
 		panic(err)
 	}
-	text, err := ioutil.ReadFile(f)
+
+	var src *os.File
+	var f string
+
+	if len(flags.Args()) < 1 {
+		src = os.Stdin
+	} else {
+		f = flags.Arg(0)
+		if _, err := os.Stat(f); os.IsNotExist(err) {
+			panic(err)
+		}
+		file, err := os.Open(f)
+		if err != nil {
+			panic(err)
+		}
+		src = file
+	}
+
+	text, err := ioutil.ReadAll(src)
 	if err != nil {
 		panic(err)
 	}
 
-	enableCommands, err := GetEnableCommands("./txtmanip.toml")
+	enableCommands, err := GetEnableCommands(config)
 	if err != nil {
 		panic(err)
 	}
@@ -354,5 +377,8 @@ func main() {
 		}
 	}()
 
+	if f == "" {
+		f = "<source file>"
+	}
 	fmt.Println(fmt.Sprintf("cat %s | ", f), strings.Join(<-cmdHistoryCh, " | "))
 }

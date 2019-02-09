@@ -356,6 +356,7 @@ func main() {
 
 					out, err := cmd.Output()
 					if err != nil {
+						view.ClearInputText()
 						if exitErr, ok := err.(*exec.ExitError); ok {
 							view.InputError(string(exitErr.Stderr))
 						} else {

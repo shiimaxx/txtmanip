@@ -134,6 +134,18 @@ func (v *MainView) SaveInputHistory() {
 	v.inputArea.saveHistory()
 }
 
+func (v *MainView) DrawInputHistory() {
+	v.inputArea.drawHistory()
+}
+
+func (v *MainView) ForwardInputHisotry() {
+	v.inputArea.forwardHistoryIndex()
+}
+
+func (v *MainView) BackwardInputHisotry() {
+	v.inputArea.backwardHistoryIndex()
+}
+
 func (v *MainView) ClearInputText() {
 	v.inputArea.clear()
 }
@@ -152,10 +164,11 @@ func (v *MainView) SaveTextHistory() {
 
 // InputArea represent input area
 type InputArea struct {
-	text      []byte
-	error     []byte
-	cursorPos int
-	history   []string
+	text       []byte
+	error      []byte
+	cursorPos  int
+	history    []string
+	historyPos int
 }
 
 func (i *InputArea) input(ch rune) {
@@ -197,6 +210,32 @@ func (i *InputArea) backwardCursor() {
 
 func (i *InputArea) saveHistory() {
 	i.history = append(i.history, string(i.text))
+	i.historyPos = len(i.history)
+}
+
+func (i *InputArea) forwardHistoryIndex() {
+	if i.historyPos == len(i.history) {
+		return
+	}
+
+	i.historyPos++
+}
+
+func (i *InputArea) backwardHistoryIndex() {
+	if i.historyPos == 0 {
+		return
+	}
+
+	i.historyPos--
+}
+
+func (i *InputArea) drawHistory() {
+	if i.historyPos == len(i.history) {
+		i.clear()
+		return
+	}
+
+	i.text = []byte(i.history[i.historyPos])
 }
 
 func (i *InputArea) clear() {
@@ -342,6 +381,12 @@ func _main() int {
 					view.BackwardCursor()
 				case termbox.KeyArrowRight, termbox.KeyCtrlF:
 					view.ForwardCursor()
+				case termbox.KeyArrowUp:
+					view.BackwardInputHisotry()
+					view.DrawInputHistory()
+				case termbox.KeyArrowDown:
+					view.ForwardInputHisotry()
+					view.DrawInputHistory()
 				case termbox.KeySpace:
 					view.InputText(rune(' '))
 					view.ForwardCursor()
@@ -358,7 +403,7 @@ func _main() int {
 					view.DeleteInputText()
 				case termbox.KeyEnter:
 					if len(view.inputArea.text) < 1 {
-						break mainloop
+						continue
 					}
 
 					args, err := shellwords.Parse(string(view.inputArea.text))

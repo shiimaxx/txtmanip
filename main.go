@@ -480,7 +480,8 @@ Options:
   -config, -c    Set configuration file path (default "txtmanip.toml")
 
 Commands in interactive mode:
-  Ctrl+Z       Redo text.
-  Ctrl+C       Quit interactive mode.
+  Ctrl+C, Esc    Quit interactive mode
+  Ctrl+Z         Redo text
+  Up, Down       Print history  
 `)
 }

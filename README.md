@@ -38,11 +38,18 @@ When the command you want to invoke is not contained in `enable_commands`, add t
 
 ```
 enable_commands = [
-    "sed",
+    "awk",
     "cut",
-    "awk"
+    "grep",
+    "head",
+    "sed",
+    "sort",
+    "tail",
+    "uniq",
+    "wc",
 ]
 ```
+
 
 ## License
 

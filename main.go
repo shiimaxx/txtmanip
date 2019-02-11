@@ -470,10 +470,13 @@ func _main() int {
 		fmt.Fprintf(os.Stderr, err.Error())
 		return ExitCodeError
 	case cmdHistory := <-cmdHistoryCh:
+		var base string
 		if f == "" {
-			f = "<source file>"
+			base = "<source>"
+		} else {
+			base = fmt.Sprintf("cat %s", f)
 		}
-		fmt.Println(fmt.Sprintf("cat %s | ", f), strings.Join(cmdHistory, " | "))
+		fmt.Println(strings.Join(append([]string{base}, cmdHistory...), " | "))
 		return ExitCodeOK
 	}
 }

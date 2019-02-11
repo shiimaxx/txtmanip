@@ -9,6 +9,8 @@ txtmanip is a text manipulation tool that possible to build you expect result ra
 
 ## Demo
 
+![](doc/demo.gif)
+
 
 ## Usage
 

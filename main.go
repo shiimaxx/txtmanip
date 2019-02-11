@@ -67,15 +67,19 @@ func (v *MainView) DrawBorderLine() {
 }
 
 func (v *MainView) DrawInputArea() {
+	for x, t := range v.inputArea.prompt {
+		termbox.SetCell(x, InputAreaPos, rune(t), ColFg, ColBg)
+	}
+
 	if len(v.inputArea.text) < 1 {
 		return
 	}
 
 	for x := 0; x < v.width; x++ {
 		if x < len(v.inputArea.text) {
-			termbox.SetCell(x, InputAreaPos, rune(v.inputArea.text[x]), ColFg, ColBg)
+			termbox.SetCell(v.inputArea.cursorInitialPos+x, InputAreaPos, rune(v.inputArea.text[x]), ColFg, ColBg)
 		} else {
-			termbox.SetCell(x, InputAreaPos, rune(' '), ColFg, ColBg)
+			termbox.SetCell(v.inputArea.cursorInitialPos+x, InputAreaPos, rune(' '), ColFg, ColBg)
 		}
 	}
 }
@@ -164,16 +168,22 @@ func (v *MainView) SaveTextHistory() {
 
 // InputArea represent input area
 type InputArea struct {
-	text       []byte
-	error      []byte
-	cursorPos  int
-	history    []string
-	historyPos int
+	text             []byte
+	error            []byte
+	cursorPos        int
+	cursorInitialPos int
+	prompt           []byte
+	history          []string
+	historyPos       int
+}
+
+func (i *InputArea) cursorOffset() int {
+	return i.cursorPos - i.cursorInitialPos
 }
 
 func (i *InputArea) input(ch rune) {
-	if len(i.text) > i.cursorPos && i.text[i.cursorPos] != 0 {
-		i.text = append(i.text[:i.cursorPos], append([]byte{byte(ch)}, i.text[i.cursorPos:]...)...)
+	if len(i.text) > i.cursorOffset() && i.text[i.cursorOffset()] != 0 {
+		i.text = append(i.text[:i.cursorOffset()], append([]byte{byte(ch)}, i.text[i.cursorOffset():]...)...)
 		return
 	}
 
@@ -181,28 +191,25 @@ func (i *InputArea) input(ch rune) {
 }
 
 func (i *InputArea) initCursor() {
-	if i.cursorPos < 1 {
-		return
-	}
-	i.cursorPos = 0
+	i.cursorPos = i.cursorInitialPos
 }
 
 func (i *InputArea) endCursor() {
-	if i.cursorPos >= len(i.text) {
+	if i.cursorOffset() == len(i.text) {
 		return
 	}
-	i.cursorPos = len(i.text)
+	i.cursorPos = i.cursorInitialPos + len(i.text)
 }
 
 func (i *InputArea) forwardCursor() {
-	if i.cursorPos >= len(i.text) {
+	if i.cursorOffset() == len(i.text) {
 		return
 	}
 	i.cursorPos++
 }
 
 func (i *InputArea) backwardCursor() {
-	if i.cursorPos < 1 {
+	if i.cursorPos == i.cursorInitialPos {
 		return
 	}
 	i.cursorPos--
@@ -263,7 +270,7 @@ func (i *InputArea) delete() {
 		return
 	}
 
-	i.text = append(i.text[:i.cursorPos], i.text[i.cursorPos+1:]...)
+	i.text = append(i.text[:i.cursorOffset()], i.text[i.cursorOffset()+1:]...)
 }
 
 // TextArea represent text area
@@ -349,13 +356,17 @@ func _main() int {
 		}
 
 		w, h := termbox.Size()
+		prompt := []byte(Name + "> ")
 		view := &MainView{
 			textArea: TextArea{
 				text: text,
 			},
-			inputArea: InputArea{},
-			width:     w,
-			height:    h,
+			inputArea: InputArea{
+				cursorInitialPos: len(prompt),
+				prompt:           prompt,
+			},
+			width:  w,
+			height: h,
 		}
 		defer func() {
 			termbox.Close()
@@ -363,6 +374,7 @@ func _main() int {
 		}()
 
 		termbox.SetInputMode(termbox.InputEsc)
+		view.InitCursor()
 
 	mainloop:
 		for {

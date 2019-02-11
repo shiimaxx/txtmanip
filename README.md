@@ -1,6 +1,9 @@
 txtmanip
 ========
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/shiimaxx/txtmanip)](https://goreportcard.com/report/github.com/shiimaxx/txtmanip)
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A tool for interactive text manipulation.
 
 ## Description

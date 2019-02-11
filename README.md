@@ -53,6 +53,12 @@ enable_commands = [
 ```
 
 
+## TODO
+
+- Improve memory efficiency
+- Support Multi-byte character
+
+
 ## License
 
 [MIT](https://github.com/shiimaxx/txtmanip/blob/master/LICENSE)

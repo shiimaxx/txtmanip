@@ -130,8 +130,12 @@ func (v *MainView) BackwardCursor() {
 	v.inputArea.backwardCursor()
 }
 
-func (v *MainView) RedoInputHistory() {
-	v.inputArea.redoHistory()
+func (v *MainView) SaveInvokeCommand() {
+	v.inputArea.saveInvokeCommand()
+}
+
+func (v *MainView) RedoInvokeCommands() {
+	v.inputArea.redoInvokeCommands()
 }
 
 func (v *MainView) SaveInputHistory() {
@@ -175,6 +179,7 @@ type InputArea struct {
 	prompt           []byte
 	history          []string
 	historyPos       int
+	invokeCommands   []string
 }
 
 func (i *InputArea) cursorOffset() int {
@@ -213,6 +218,10 @@ func (i *InputArea) backwardCursor() {
 		return
 	}
 	i.cursorPos--
+}
+
+func (i *InputArea) saveInvokeCommand() {
+	i.invokeCommands = append(i.invokeCommands, string(i.text))
 }
 
 func (i *InputArea) saveHistory() {
@@ -261,8 +270,8 @@ func (i *InputArea) drawError() {
 	i.error = []byte("")
 }
 
-func (i *InputArea) redoHistory() {
-	i.history = i.history[:len(i.history)-1]
+func (i *InputArea) redoInvokeCommands() {
+	i.invokeCommands = i.invokeCommands[:len(i.invokeCommands)-1]
 }
 
 func (i *InputArea) delete() {
@@ -346,7 +355,7 @@ func _main() int {
 		return ExitCodeError
 	}
 
-	cmdHistoryCh := make(chan []string)
+	invokeCommandsCh := make(chan []string)
 	errCh := make(chan error)
 
 	go func() {
@@ -370,7 +379,7 @@ func _main() int {
 		}
 		defer func() {
 			termbox.Close()
-			cmdHistoryCh <- view.inputArea.history
+			invokeCommandsCh <- view.inputArea.invokeCommands
 		}()
 
 		termbox.SetInputMode(termbox.InputEsc)
@@ -407,7 +416,7 @@ func _main() int {
 						continue
 					}
 					view.RedoText()
-					view.RedoInputHistory()
+					view.RedoInvokeCommands()
 				case termbox.KeyBackspace, termbox.KeyBackspace2:
 					view.BackwardCursor()
 					view.DeleteInputText()
@@ -453,6 +462,7 @@ func _main() int {
 						view.SaveTextHistory()
 						view.SetText(&out)
 						view.SaveInputHistory()
+						view.SaveInvokeCommand()
 						view.ClearInputText()
 					}
 				default:
@@ -469,14 +479,14 @@ func _main() int {
 	case err := <-errCh:
 		fmt.Fprintf(os.Stderr, err.Error())
 		return ExitCodeError
-	case cmdHistory := <-cmdHistoryCh:
+	case invokeCommands := <-invokeCommandsCh:
 		var base string
 		if f == "" {
 			base = "<source>"
 		} else {
 			base = fmt.Sprintf("cat %s", f)
 		}
-		fmt.Println(strings.Join(append([]string{base}, cmdHistory...), " | "))
+		fmt.Println(strings.Join(append([]string{base}, invokeCommands...), " | "))
 		return ExitCodeOK
 	}
 }

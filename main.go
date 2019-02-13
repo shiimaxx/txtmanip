@@ -343,6 +343,17 @@ func _main() int {
 		src = file
 	}
 
+	fi, err := src.Stat()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Get file stat failed: %s\n", err.Error())
+		return ExitCodeError
+	}
+
+	if fi.Size() < 1 {
+		fmt.Fprintf(os.Stderr, "Missing input\n")
+		return ExitCodeError
+	}
+
 	text, err := ioutil.ReadAll(src)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Reading from src failed: %s\n", err.Error())

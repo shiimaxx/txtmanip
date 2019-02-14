@@ -67,21 +67,7 @@ func (v *MainView) DrawBorderLine() {
 }
 
 func (v *MainView) DrawInputArea() {
-	for x, t := range v.inputArea.prompt {
-		termbox.SetCell(x, InputAreaPos, rune(t), ColFg, ColBg)
-	}
-
-	if len(v.inputArea.text) < 1 {
-		return
-	}
-
-	for x := 0; x < v.width; x++ {
-		if x < len(v.inputArea.text) {
-			termbox.SetCell(v.inputArea.cursorInitialPos+x, InputAreaPos, rune(v.inputArea.text[x]), ColFg, ColBg)
-		} else {
-			termbox.SetCell(v.inputArea.cursorInitialPos+x, InputAreaPos, rune(' '), ColFg, ColBg)
-		}
-	}
+	v.inputArea.drawText(v.width, v.height)
 }
 
 func (v *MainView) DrawInputError() {
@@ -89,17 +75,7 @@ func (v *MainView) DrawInputError() {
 }
 
 func (v *MainView) DrawTextArea() {
-	y := TextAreaPos
-	x := 0
-	for _, t := range v.textArea.text {
-		if t == byte('\n') {
-			y++
-			x = 0
-			continue
-		}
-		termbox.SetCell(x, y, rune(t), ColFg, ColBg)
-		x++
-	}
+	v.textArea.drawText()
 }
 
 func (v *MainView) InputText(ch rune) {
@@ -245,6 +221,24 @@ func (i *InputArea) backwardHistoryIndex() {
 	i.historyPos--
 }
 
+func (i *InputArea) drawText(width, hight int) {
+	for x, t := range i.prompt {
+		termbox.SetCell(x, InputAreaPos, rune(t), ColFg, ColBg)
+	}
+
+	if len(i.text) < 1 {
+		return
+	}
+
+	for x := 0; x < width; x++ {
+		if x < len(i.text) {
+			termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(i.text[x]), ColFg, ColBg)
+		} else {
+			termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(' '), ColFg, ColBg)
+		}
+	}
+}
+
 func (i *InputArea) drawHistory() {
 	if i.historyPos == len(i.history) {
 		i.clear()
@@ -290,6 +284,20 @@ type TextArea struct {
 
 func (t *TextArea) setText(out *[]byte) {
 	t.text = *out
+}
+
+func (t *TextArea) drawText() {
+	y := TextAreaPos
+	x := 0
+	for _, t := range t.text {
+		if t == byte('\n') {
+			y++
+			x = 0
+			continue
+		}
+		termbox.SetCell(x, y, rune(t), ColFg, ColBg)
+		x++
+	}
 }
 
 func (t *TextArea) redo() {

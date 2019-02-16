@@ -17,7 +17,7 @@ import (
 
 const (
 	Name    = "txtmanip"
-	Version = "0.1.0"
+	Version = "0.1.1"
 )
 
 const (

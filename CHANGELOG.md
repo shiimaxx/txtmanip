@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 - 2019-02-16
+
+- Fix input history issue that history list is incomplete
+- Fix behave for missing argument
+- Refactoring 
+
+
 ## 0.1.0 - 2019-02-11
 
 - Initial release

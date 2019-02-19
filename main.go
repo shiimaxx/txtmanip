@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/mattn/go-shellwords"
 	"github.com/nsf/termbox-go"
@@ -163,12 +164,15 @@ func (i *InputArea) cursorOffset() int {
 }
 
 func (i *InputArea) input(ch rune) {
+	var buf [utf8.UTFMax]byte
+	n := utf8.EncodeRune(buf[:], ch)
+
 	if len(i.text) > i.cursorOffset() && i.text[i.cursorOffset()] != 0 {
-		i.text = append(i.text[:i.cursorOffset()], append([]byte{byte(ch)}, i.text[i.cursorOffset():]...)...)
+		i.text = append(i.text[:i.cursorOffset()], append(buf[:n], i.text[i.cursorOffset():]...)...)
 		return
 	}
 
-	i.text = append(i.text, byte(ch))
+	i.text = append(i.text, buf[:n]...)
 }
 
 func (i *InputArea) initCursor() {
@@ -186,7 +190,9 @@ func (i *InputArea) forwardCursor() {
 	if i.cursorOffset() == len(i.text) {
 		return
 	}
-	i.cursorPos++
+
+	_, size := utf8.DecodeLastRune(i.text[:i.cursorOffset()+len(i.text)])
+	i.cursorPos += size
 }
 
 func (i *InputArea) backwardCursor() {

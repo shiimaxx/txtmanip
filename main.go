@@ -188,12 +188,11 @@ func (i *InputArea) endCursor() {
 }
 
 func (i *InputArea) forwardCursor() {
-	if i.cursorOffset() == len(i.text) {
+	if i.cursorOffset() == runewidth.StringWidth(string(i.text)) {
 		return
 	}
 
-	// TODO: Don't work
-	_, size := utf8.DecodeLastRune(i.text[:i.cursorOffset()])
+	_, size := utf8.DecodeLastRune(i.text[i.cursorOffset():])
 	if size > 1 {
 		i.cursorPos++
 	}
@@ -203,6 +202,17 @@ func (i *InputArea) forwardCursor() {
 func (i *InputArea) backwardCursor() {
 	if i.cursorPos == i.cursorInitialPos {
 		return
+	}
+
+	//TODO: fix
+	offset := utf8.UTFMax
+	for i.cursorOffset()-offset < 0 {
+		offset--
+	}
+
+	_, size := utf8.DecodeLastRune(i.text[i.cursorOffset()-offset:])
+	if size > 1 {
+		i.cursorPos--
 	}
 	i.cursorPos--
 }

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/mattn/go-shellwords"
 	"github.com/nsf/termbox-go"
 )
@@ -191,8 +192,12 @@ func (i *InputArea) forwardCursor() {
 		return
 	}
 
-	_, size := utf8.DecodeLastRune(i.text[:i.cursorOffset()+len(i.text)])
-	i.cursorPos += size
+	// TODO: Don't work
+	_, size := utf8.DecodeLastRune(i.text[:i.cursorOffset()])
+	if size > 1 {
+		i.cursorPos++
+	}
+	i.cursorPos++
 }
 
 func (i *InputArea) backwardCursor() {
@@ -236,13 +241,23 @@ func (i *InputArea) drawText(width, hight int) {
 		return
 	}
 
-	for x := 0; x < width; x++ {
-		if x < len(i.text) {
-			termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(i.text[x]), ColFg, ColBg)
-		} else {
-			termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(' '), ColFg, ColBg)
-		}
+	var x int
+	for _, c := range string(i.text) {
+		termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, c, ColFg, ColBg)
+		x += runewidth.RuneWidth(c)
 	}
+
+	for x := x; x < width; x++ {
+		termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(' '), ColFg, ColBg)
+	}
+
+	//for x := 0; x < width; x++ {
+	//	if x < len(i.text) {
+	//		termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(i.text[x]), ColFg, ColBg)
+	//	} else {
+	//		termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(' '), ColFg, ColBg)
+	//	}
+	//}
 }
 
 func (i *InputArea) drawHistory() {

@@ -168,8 +168,13 @@ func (i *InputArea) input(ch rune) {
 	var buf [utf8.UTFMax]byte
 	n := utf8.EncodeRune(buf[:], ch)
 
-	if len(i.text) > i.cursorOffset() && i.text[i.cursorOffset()] != 0 {
-		i.text = append(i.text[:i.cursorOffset()], append(buf[:n], i.text[i.cursorOffset():]...)...)
+	if i.cursorOffset() < runewidth.StringWidth(string(i.text)) {
+		_, size := utf8.DecodeLastRune(i.text[i.cursorOffset():])
+		if size > 1 {
+			i.text = append(i.text[:i.cursorOffset()+1], append(buf[:n], i.text[i.cursorOffset()+1:]...)...)
+		} else {
+			i.text = append(i.text[:i.cursorOffset()], append(buf[:n], i.text[i.cursorOffset():]...)...)
+		}
 		return
 	}
 
@@ -204,7 +209,6 @@ func (i *InputArea) backwardCursor() {
 		return
 	}
 
-	//TODO: fix
 	offset := utf8.UTFMax
 	for i.cursorOffset()-offset < 0 {
 		offset--

@@ -264,14 +264,6 @@ func (i *InputArea) drawText(width, hight int) {
 	for x := x; x < width; x++ {
 		termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(' '), ColFg, ColBg)
 	}
-
-	//for x := 0; x < width; x++ {
-	//	if x < len(i.text) {
-	//		termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(i.text[x]), ColFg, ColBg)
-	//	} else {
-	//		termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(' '), ColFg, ColBg)
-	//	}
-	//}
 }
 
 func (i *InputArea) drawHistory() {

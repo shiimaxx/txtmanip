@@ -80,8 +80,8 @@ func (v *MainView) DrawTextArea() {
 	v.textArea.drawText()
 }
 
-func (v *MainView) InputText(ch rune) {
-	v.inputArea.input(ch)
+func (v *MainView) InputText(ch rune) int {
+	return v.inputArea.input(ch)
 }
 
 func (v *MainView) DeleteInputText() {
@@ -100,8 +100,8 @@ func (v *MainView) EndCursor() {
 	v.inputArea.endCursor()
 }
 
-func (v *MainView) ForwardCursor() {
-	v.inputArea.forwardCursor()
+func (v *MainView) ForwardCursor(offset int) {
+	v.inputArea.forwardCursor(offset)
 }
 
 func (v *MainView) BackwardCursor() {
@@ -164,21 +164,25 @@ func (i *InputArea) cursorOffset() int {
 	return i.cursorPos - i.cursorInitialPos
 }
 
-func (i *InputArea) input(ch rune) {
+func (i *InputArea) input(ch rune) int {
 	var buf [utf8.UTFMax]byte
 	n := utf8.EncodeRune(buf[:], ch)
 
+	//var runeWidth int
 	if i.cursorOffset() < runewidth.StringWidth(string(i.text)) {
 		_, size := utf8.DecodeLastRune(i.text[i.cursorOffset():])
 		if size > 1 {
-			i.text = append(i.text[:i.cursorOffset()+1], append(buf[:n], i.text[i.cursorOffset()+1:]...)...)
+			i.text = append(i.text[:i.cursorOffset()+(size-1)], append(buf[:n], i.text[i.cursorOffset()+(size-1):]...)...)
+			//runeWidth = 2
 		} else {
 			i.text = append(i.text[:i.cursorOffset()], append(buf[:n], i.text[i.cursorOffset():]...)...)
+			//runeWidth = 1
 		}
-		return
+		return runewidth.RuneWidth(ch)
 	}
 
 	i.text = append(i.text, buf[:n]...)
+	return runewidth.RuneWidth(ch)
 }
 
 func (i *InputArea) initCursor() {
@@ -192,8 +196,13 @@ func (i *InputArea) endCursor() {
 	i.cursorPos = i.cursorInitialPos + len(i.text)
 }
 
-func (i *InputArea) forwardCursor() {
+func (i *InputArea) forwardCursor(offset int) {
 	if i.cursorOffset() == runewidth.StringWidth(string(i.text)) {
+		return
+	}
+
+	if offset > 0 {
+		i.cursorPos += offset
 		return
 	}
 
@@ -449,7 +458,7 @@ func _main() int {
 				case termbox.KeyArrowLeft, termbox.KeyCtrlB:
 					view.BackwardCursor()
 				case termbox.KeyArrowRight, termbox.KeyCtrlF:
-					view.ForwardCursor()
+					view.ForwardCursor(0)
 				case termbox.KeyArrowUp:
 					view.BackwardInputHisotry()
 					view.DrawInputHistory()
@@ -458,7 +467,7 @@ func _main() int {
 					view.DrawInputHistory()
 				case termbox.KeySpace:
 					view.InputText(rune(' '))
-					view.ForwardCursor()
+					view.ForwardCursor(0)
 				case termbox.KeyCtrlZ:
 					if len(view.textArea.history) < 1 {
 						continue
@@ -515,8 +524,8 @@ func _main() int {
 					}
 				default:
 					if ev.Ch != 0 {
-						view.InputText(ev.Ch)
-						view.ForwardCursor()
+						runeWidth := view.InputText(ev.Ch)
+						view.ForwardCursor(runeWidth)
 					}
 				}
 			}

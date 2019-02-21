@@ -318,14 +318,14 @@ func (t *TextArea) setText(out *[]byte) {
 func (t *TextArea) drawText() {
 	y := TextAreaPos
 	x := 0
-	for _, t := range t.text {
-		if t == byte('\n') {
+	for _, t := range string(t.text) {
+		if t == '\n' {
 			y++
 			x = 0
 			continue
 		}
-		termbox.SetCell(x, y, rune(t), ColFg, ColBg)
-		x++
+		termbox.SetCell(x, y, t, ColFg, ColBg)
+		x += runewidth.RuneWidth(t)
 	}
 }
 

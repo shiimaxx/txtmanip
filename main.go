@@ -285,8 +285,10 @@ func (i *InputArea) drawError() {
 		return
 	}
 
-	for x, t := range i.error {
-		termbox.SetCell(x, InputErrorPos, rune(t), ColErr, ColBg)
+	var x int
+	for _, t := range string(i.error) {
+		termbox.SetCell(x, InputErrorPos, t, ColErr, ColBg)
+		x += runewidth.RuneWidth(t)
 	}
 	i.error = []byte("")
 }

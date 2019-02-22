@@ -193,7 +193,7 @@ func (i *InputArea) endCursor() {
 	if i.cursorOffset() == len(i.text) {
 		return
 	}
-	i.cursorPos = i.cursorInitialPos + len(i.text)
+	i.cursorPos = i.cursorInitialPos + runewidth.StringWidth(string(i.text))
 }
 
 func (i *InputArea) forwardCursor(offset int) {

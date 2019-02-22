@@ -168,15 +168,12 @@ func (i *InputArea) input(ch rune) int {
 	var buf [utf8.UTFMax]byte
 	n := utf8.EncodeRune(buf[:], ch)
 
-	//var runeWidth int
 	if i.cursorOffset() < runewidth.StringWidth(string(i.text)) {
 		_, size := utf8.DecodeLastRune(i.text[i.cursorOffset():])
 		if size > 1 {
 			i.text = append(i.text[:i.cursorOffset()+(size-1)], append(buf[:n], i.text[i.cursorOffset()+(size-1):]...)...)
-			//runeWidth = 2
 		} else {
 			i.text = append(i.text[:i.cursorOffset()], append(buf[:n], i.text[i.cursorOffset():]...)...)
-			//runeWidth = 1
 		}
 		return runewidth.RuneWidth(ch)
 	}

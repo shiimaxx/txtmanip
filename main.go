@@ -154,6 +154,7 @@ type InputArea struct {
 	error            []byte
 	cursorPos        int
 	cursorInitialPos int
+	cursorByteOffset int
 	prompt           []byte
 	history          []string
 	historyPos       int

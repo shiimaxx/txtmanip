@@ -100,8 +100,12 @@ func (v *MainView) EndCursor() {
 	v.inputArea.endCursor()
 }
 
-func (v *MainView) ForwardCursor(offset int) {
-	v.inputArea.forwardCursor(offset)
+func (v *MainView) ForwardCursor(ch rune) {
+	v.inputArea.forwardCursor(ch)
+}
+
+func (v *MainView) ForwardOneRuneCursor() {
+	v.inputArea.forwardOneRuneCursor()
 }
 
 func (v *MainView) BackwardCursor() {
@@ -185,6 +189,7 @@ func (i *InputArea) input(ch rune) int {
 
 func (i *InputArea) initCursor() {
 	i.cursorPos = i.cursorInitialPos
+	i.cursorByteOffset = 0
 }
 
 func (i *InputArea) endCursor() {
@@ -192,23 +197,29 @@ func (i *InputArea) endCursor() {
 		return
 	}
 	i.cursorPos = i.cursorInitialPos + runewidth.StringWidth(string(i.text))
+	i.cursorByteOffset = len(i.text)
 }
 
-func (i *InputArea) forwardCursor(offset int) {
+func (i *InputArea) forwardCursor(ch rune) {
 	if i.cursorOffset() == runewidth.StringWidth(string(i.text)) {
 		return
 	}
 
-	if offset > 0 {
-		i.cursorPos += offset
+	i.cursorPos += runewidth.RuneWidth(ch)
+	i.cursorByteOffset += utf8.RuneLen(ch)
+}
+
+func (i *InputArea) forwardOneRuneCursor() {
+	if i.cursorOffset() == runewidth.StringWidth(string(i.text)) {
 		return
 	}
 
-	_, size := utf8.DecodeLastRune(i.text[i.cursorOffset():])
+	_, size := utf8.DecodeRune(i.text[i.cursorByteOffset:])
 	if size > 1 {
 		i.cursorPos++
 	}
 	i.cursorPos++
+	i.cursorByteOffset += size
 }
 
 func (i *InputArea) backwardCursor() {
@@ -456,7 +467,7 @@ func _main() int {
 				case termbox.KeyArrowLeft, termbox.KeyCtrlB:
 					view.BackwardCursor()
 				case termbox.KeyArrowRight, termbox.KeyCtrlF:
-					view.ForwardCursor(0)
+					view.ForwardOneRuneCursor()
 				case termbox.KeyArrowUp:
 					view.BackwardInputHisotry()
 					view.DrawInputHistory()
@@ -465,7 +476,7 @@ func _main() int {
 					view.DrawInputHistory()
 				case termbox.KeySpace:
 					view.InputText(rune(' '))
-					view.ForwardCursor(0)
+					view.ForwardCursor(rune(' '))
 				case termbox.KeyCtrlZ:
 					if len(view.textArea.history) < 1 {
 						continue
@@ -522,8 +533,8 @@ func _main() int {
 					}
 				default:
 					if ev.Ch != 0 {
-						runeWidth := view.InputText(ev.Ch)
-						view.ForwardCursor(runeWidth)
+						view.InputText(ev.Ch)
+						view.ForwardCursor(ev.Ch)
 					}
 				}
 			}

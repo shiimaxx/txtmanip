@@ -80,8 +80,8 @@ func (v *MainView) DrawTextArea() {
 	v.textArea.drawText()
 }
 
-func (v *MainView) InputText(ch rune) int {
-	return v.inputArea.input(ch)
+func (v *MainView) InputText(ch rune) {
+	v.inputArea.input(ch)
 }
 
 func (v *MainView) DeleteInputText() {
@@ -169,22 +169,16 @@ func (i *InputArea) cursorOffset() int {
 	return i.cursorPos - i.cursorInitialPos
 }
 
-func (i *InputArea) input(ch rune) int {
+func (i *InputArea) input(ch rune) {
 	var buf [utf8.UTFMax]byte
 	n := utf8.EncodeRune(buf[:], ch)
 
 	if i.cursorOffset() < runewidth.StringWidth(string(i.text)) {
-		_, size := utf8.DecodeLastRune(i.text[i.cursorOffset():])
-		if size > 1 {
-			i.text = append(i.text[:i.cursorOffset()+(size-1)], append(buf[:n], i.text[i.cursorOffset()+(size-1):]...)...)
-		} else {
-			i.text = append(i.text[:i.cursorOffset()], append(buf[:n], i.text[i.cursorOffset():]...)...)
-		}
-		return runewidth.RuneWidth(ch)
+		i.text = append(i.text[:i.cursorByteOffset], append(buf[:n], i.text[i.cursorByteOffset:]...)...)
+		return
 	}
 
 	i.text = append(i.text, buf[:n]...)
-	return runewidth.RuneWidth(ch)
 }
 
 func (i *InputArea) initCursor() {

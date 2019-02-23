@@ -310,7 +310,8 @@ func (i *InputArea) delete() {
 		return
 	}
 
-	i.text = append(i.text[:i.cursorOffset()], i.text[i.cursorOffset()+1:]...)
+	_, size := utf8.DecodeRune(i.text[i.cursorByteOffset:])
+	i.text = append(i.text[:i.cursorByteOffset], i.text[i.cursorByteOffset+size:]...)
 }
 
 // TextArea represent text area

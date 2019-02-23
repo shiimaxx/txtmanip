@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.0 - 2019-02-23
+
+- Support Multi-byte character
+
 ## 0.1.1 - 2019-02-16
 
 - Fix input history issue that history list is incomplete

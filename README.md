@@ -59,7 +59,6 @@ enable_commands = [
 ## TODO
 
 - Improve memory efficiency
-- Support Multi-byte character
 
 
 ## License

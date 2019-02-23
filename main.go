@@ -10,7 +10,9 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"unicode/utf8"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/mattn/go-shellwords"
 	"github.com/nsf/termbox-go"
 )
@@ -98,8 +100,12 @@ func (v *MainView) EndCursor() {
 	v.inputArea.endCursor()
 }
 
-func (v *MainView) ForwardCursor() {
-	v.inputArea.forwardCursor()
+func (v *MainView) ForwardCursor(ch rune) {
+	v.inputArea.forwardCursor(ch)
+}
+
+func (v *MainView) ForwardOneRuneCursor() {
+	v.inputArea.forwardOneRuneCursor()
 }
 
 func (v *MainView) BackwardCursor() {
@@ -152,6 +158,7 @@ type InputArea struct {
 	error            []byte
 	cursorPos        int
 	cursorInitialPos int
+	cursorByteOffset int
 	prompt           []byte
 	history          []string
 	historyPos       int
@@ -163,37 +170,63 @@ func (i *InputArea) cursorOffset() int {
 }
 
 func (i *InputArea) input(ch rune) {
-	if len(i.text) > i.cursorOffset() && i.text[i.cursorOffset()] != 0 {
-		i.text = append(i.text[:i.cursorOffset()], append([]byte{byte(ch)}, i.text[i.cursorOffset():]...)...)
+	var buf [utf8.UTFMax]byte
+	n := utf8.EncodeRune(buf[:], ch)
+
+	if i.cursorOffset() < runewidth.StringWidth(string(i.text)) {
+		i.text = append(i.text[:i.cursorByteOffset], append(buf[:n], i.text[i.cursorByteOffset:]...)...)
 		return
 	}
 
-	i.text = append(i.text, byte(ch))
+	i.text = append(i.text, buf[:n]...)
 }
 
 func (i *InputArea) initCursor() {
 	i.cursorPos = i.cursorInitialPos
+	i.cursorByteOffset = 0
 }
 
 func (i *InputArea) endCursor() {
 	if i.cursorOffset() == len(i.text) {
 		return
 	}
-	i.cursorPos = i.cursorInitialPos + len(i.text)
+	i.cursorPos = i.cursorInitialPos + runewidth.StringWidth(string(i.text))
+	i.cursorByteOffset = len(i.text)
 }
 
-func (i *InputArea) forwardCursor() {
-	if i.cursorOffset() == len(i.text) {
+func (i *InputArea) forwardCursor(ch rune) {
+	if i.cursorOffset() == runewidth.StringWidth(string(i.text)) {
 		return
 	}
+
+	i.cursorPos += runewidth.RuneWidth(ch)
+	i.cursorByteOffset += utf8.RuneLen(ch)
+}
+
+func (i *InputArea) forwardOneRuneCursor() {
+	if i.cursorOffset() == runewidth.StringWidth(string(i.text)) {
+		return
+	}
+
+	_, size := utf8.DecodeRune(i.text[i.cursorByteOffset:])
+	if size > 1 {
+		i.cursorPos++
+	}
 	i.cursorPos++
+	i.cursorByteOffset += size
 }
 
 func (i *InputArea) backwardCursor() {
 	if i.cursorPos == i.cursorInitialPos {
 		return
 	}
+
+	_, size := utf8.DecodeLastRune(i.text[:i.cursorByteOffset])
+	if size > 1 {
+		i.cursorPos--
+	}
 	i.cursorPos--
+	i.cursorByteOffset -= size
 }
 
 func (i *InputArea) saveInvokeCommand() {
@@ -230,12 +263,14 @@ func (i *InputArea) drawText(width, hight int) {
 		return
 	}
 
-	for x := 0; x < width; x++ {
-		if x < len(i.text) {
-			termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(i.text[x]), ColFg, ColBg)
-		} else {
-			termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(' '), ColFg, ColBg)
-		}
+	var x int
+	for _, c := range string(i.text) {
+		termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, c, ColFg, ColBg)
+		x += runewidth.RuneWidth(c)
+	}
+
+	for x := x; x < width; x++ {
+		termbox.SetCell(i.cursorInitialPos+x, InputAreaPos, rune(' '), ColFg, ColBg)
 	}
 }
 
@@ -258,8 +293,10 @@ func (i *InputArea) drawError() {
 		return
 	}
 
-	for x, t := range i.error {
-		termbox.SetCell(x, InputErrorPos, rune(t), ColErr, ColBg)
+	var x int
+	for _, t := range string(i.error) {
+		termbox.SetCell(x, InputErrorPos, t, ColErr, ColBg)
+		x += runewidth.RuneWidth(t)
 	}
 	i.error = []byte("")
 }
@@ -273,7 +310,8 @@ func (i *InputArea) delete() {
 		return
 	}
 
-	i.text = append(i.text[:i.cursorOffset()], i.text[i.cursorOffset()+1:]...)
+	_, size := utf8.DecodeRune(i.text[i.cursorByteOffset:])
+	i.text = append(i.text[:i.cursorByteOffset], i.text[i.cursorByteOffset+size:]...)
 }
 
 // TextArea represent text area
@@ -289,14 +327,14 @@ func (t *TextArea) setText(out *[]byte) {
 func (t *TextArea) drawText() {
 	y := TextAreaPos
 	x := 0
-	for _, t := range t.text {
-		if t == byte('\n') {
+	for _, t := range string(t.text) {
+		if t == '\n' {
 			y++
 			x = 0
 			continue
 		}
-		termbox.SetCell(x, y, rune(t), ColFg, ColBg)
-		x++
+		termbox.SetCell(x, y, t, ColFg, ColBg)
+		x += runewidth.RuneWidth(t)
 	}
 }
 
@@ -420,7 +458,7 @@ func _main() int {
 				case termbox.KeyArrowLeft, termbox.KeyCtrlB:
 					view.BackwardCursor()
 				case termbox.KeyArrowRight, termbox.KeyCtrlF:
-					view.ForwardCursor()
+					view.ForwardOneRuneCursor()
 				case termbox.KeyArrowUp:
 					view.BackwardInputHisotry()
 					view.DrawInputHistory()
@@ -429,7 +467,7 @@ func _main() int {
 					view.DrawInputHistory()
 				case termbox.KeySpace:
 					view.InputText(rune(' '))
-					view.ForwardCursor()
+					view.ForwardCursor(rune(' '))
 				case termbox.KeyCtrlZ:
 					if len(view.textArea.history) < 1 {
 						continue
@@ -487,7 +525,7 @@ func _main() int {
 				default:
 					if ev.Ch != 0 {
 						view.InputText(ev.Ch)
-						view.ForwardCursor()
+						view.ForwardCursor(ev.Ch)
 					}
 				}
 			}

@@ -221,16 +221,12 @@ func (i *InputArea) backwardCursor() {
 		return
 	}
 
-	offset := utf8.UTFMax
-	for i.cursorOffset()-offset < 0 {
-		offset--
-	}
-
-	_, size := utf8.DecodeLastRune(i.text[i.cursorOffset()-offset:])
+	_, size := utf8.DecodeLastRune(i.text[:i.cursorByteOffset])
 	if size > 1 {
 		i.cursorPos--
 	}
 	i.cursorPos--
+	i.cursorByteOffset -= size
 }
 
 func (i *InputArea) saveInvokeCommand() {

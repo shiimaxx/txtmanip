@@ -22,7 +22,7 @@ const (
 	// Name is the application name
 	Name = "txtmanip"
 	// Version is the application version
-	Version = "0.2.0"
+	Version = "0.2.1"
 )
 
 // Exit codes are int values that represent an exit code for a particular error.

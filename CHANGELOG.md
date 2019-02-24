@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - 2019-02-24
+
+- Fix issue of not save history when "grep" no line matched (workaround) 
+
 ## 0.2.0 - 2019-02-23
 
 - Support Multi-byte character

@@ -48,6 +48,7 @@ type MainView struct {
 	width     int
 }
 
+// Flush invokes termbox.Flush() after updates back buffers and set cursor
 func (v *MainView) Flush() error {
 	if err := termbox.Clear(ColBg, ColBg); err != nil {
 		return err
@@ -62,84 +63,104 @@ func (v *MainView) Flush() error {
 	return termbox.Flush()
 }
 
+// DrawBorderLine draws line between input area and text area
 func (v *MainView) DrawBorderLine() {
 	for x := 0; x < v.width; x++ {
 		termbox.SetCell(x, BorderLinePos, rune('-'), ColFg, ColBg)
 	}
 }
 
+// DrawInputArea updates back buffer for input area
 func (v *MainView) DrawInputArea() {
 	v.inputArea.drawText(v.width, v.height)
 }
 
+// DrawInputError updates back buffer for input error area
 func (v *MainView) DrawInputError() {
 	v.inputArea.drawError()
 }
 
+// DrawTextArea updates back buffer for text area
 func (v *MainView) DrawTextArea() {
 	v.textArea.drawText()
 }
 
+// InputText adds byte by input
 func (v *MainView) InputText(ch rune) {
 	v.inputArea.input(ch)
 }
 
+// DeleteInputText deletes byte by input
 func (v *MainView) DeleteInputText() {
 	v.inputArea.delete()
 }
 
+// InputError sets error message
 func (v *MainView) InputError(m string) {
 	v.inputArea.error = []byte(m)
 }
 
+// InitCursor sets cursor position to initial one
 func (v *MainView) InitCursor() {
 	v.inputArea.initCursor()
 }
 
+// EndCursor sets cursor position to end of input text
 func (v *MainView) EndCursor() {
 	v.inputArea.endCursor()
 }
 
+// ForwardCursor forward cursor position
 func (v *MainView) ForwardCursor(ch rune) {
 	v.inputArea.forwardCursor(ch)
 }
 
+// ForwardOneRuneCursor forward cursor position one rune
 func (v *MainView) ForwardOneRuneCursor() {
 	v.inputArea.forwardOneRuneCursor()
 }
 
+// BackwardCursor backward cursor position
 func (v *MainView) BackwardCursor() {
 	v.inputArea.backwardCursor()
 }
 
+// SaveInvokeCommand saves invoked commands as list
 func (v *MainView) SaveInvokeCommand() {
 	v.inputArea.saveInvokeCommand()
 }
 
+// RedoInvokeCommands reverts invoked command list to preview version
 func (v *MainView) RedoInvokeCommands() {
 	v.inputArea.redoInvokeCommands()
 }
 
+// SaveInputHistory saves invoked commands as history list
 func (v *MainView) SaveInputHistory() {
 	v.inputArea.saveHistory()
 }
 
+// DrawInputHistory updates back buffer for input area with history
 func (v *MainView) DrawInputHistory() {
 	v.inputArea.drawHistory()
 }
 
-func (v *MainView) ForwardInputHisotry() {
+// ForwardInputHistory forward input history index
+func (v *MainView) ForwardInputHistory() {
 	v.inputArea.forwardHistoryIndex()
 }
 
-func (v *MainView) BackwardInputHisotry() {
+// BackwardInputHistory backward input history index
+func (v *MainView) BackwardInputHistory() {
 	v.inputArea.backwardHistoryIndex()
 }
 
+// ClearInputText clears content on input text
 func (v *MainView) ClearInputText() {
 	v.inputArea.clear()
 }
 
+// SetText sets content on text area
 func (v *MainView) SetText(out *[]byte) {
 	v.textArea.setText(out)
 }
@@ -148,6 +169,7 @@ func (v *MainView) RedoText() {
 	v.textArea.redo()
 }
 
+// SaveTextHistory saves manipulated text history as list
 func (v *MainView) SaveTextHistory() {
 	v.textArea.saveHistory()
 }
@@ -460,10 +482,10 @@ func _main() int {
 				case termbox.KeyArrowRight, termbox.KeyCtrlF:
 					view.ForwardOneRuneCursor()
 				case termbox.KeyArrowUp:
-					view.BackwardInputHisotry()
+					view.BackwardInputHistory()
 					view.DrawInputHistory()
 				case termbox.KeyArrowDown:
-					view.ForwardInputHisotry()
+					view.ForwardInputHistory()
 					view.DrawInputHistory()
 				case termbox.KeySpace:
 					view.InputText(rune(' '))

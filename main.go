@@ -18,15 +18,19 @@ import (
 )
 
 const (
-	Name    = "txtmanip"
+	// Name is the application name
+	Name = "txtmanip"
+	// Version is the application version
 	Version = "0.2.0"
 )
 
+// Exit codes are int values that represent an exit code for a particular error.
 const (
 	ExitCodeOK    = 0
 	ExitCodeError = 10 + iota
 )
 
+// Positions are y-coordinate for areas and line
 const (
 	InputAreaPos = iota
 	InputErrorPos

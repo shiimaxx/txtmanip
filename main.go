@@ -38,6 +38,7 @@ const (
 	TextAreaPos
 )
 
+// Color Settings for text
 const (
 	ColBg  = termbox.ColorDefault
 	ColFg  = termbox.ColorWhite

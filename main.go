@@ -170,6 +170,7 @@ func (v *MainView) SetText(out *[]byte) {
 	v.textArea.setText(out)
 }
 
+// RedoText reverts content of text area to preview version
 func (v *MainView) RedoText() {
 	v.textArea.redo()
 }

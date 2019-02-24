@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"unicode/utf8"
 
 	"github.com/mattn/go-runewidth"
@@ -537,19 +538,32 @@ func _main() int {
 
 					out, err := cmd.Output()
 					if err != nil {
-						view.ClearInputText()
+						var isNotError bool
 						if exitErr, ok := err.(*exec.ExitError); ok {
+							// Workaround:
+							// "grep" exits with return status 1 when no lines matched.
+							// In this case is not error and I want to avoid deal with error it case.
+							if baseCommand == "grep" {
+								if ws, ok := exitErr.ProcessState.Sys().(syscall.WaitStatus); ok && ws.ExitStatus() == 1 {
+									isNotError = true
+								}
+							}
 							view.InputError(string(exitErr.Stderr))
 						} else {
 							view.InputError(err.Error())
 						}
-					} else {
-						view.SaveTextHistory()
-						view.SetText(&out)
-						view.SaveInputHistory()
-						view.SaveInvokeCommand()
-						view.ClearInputText()
+
+						if !isNotError {
+							view.ClearInputText()
+							continue
+						}
 					}
+
+					view.SaveTextHistory()
+					view.SetText(&out)
+					view.SaveInputHistory()
+					view.SaveInvokeCommand()
+					view.ClearInputText()
 				default:
 					if ev.Ch != 0 {
 						view.InputText(ev.Ch)

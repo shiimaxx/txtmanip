@@ -38,6 +38,7 @@
   analyzer-version = 1
   input-imports = [
     "github.com/BurntSushi/toml",
+    "github.com/mattn/go-runewidth",
     "github.com/mattn/go-shellwords",
     "github.com/nsf/termbox-go",
   ]

@@ -56,11 +56,6 @@ enable_commands = [
 ```
 
 
-## TODO
-
-- Improve memory efficiency
-
-
 ## License
 
 [MIT](https://github.com/shiimaxx/txtmanip/blob/master/LICENSE)
